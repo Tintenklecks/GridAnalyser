@@ -6,13 +6,16 @@ from datetime import datetime, timedelta
 if "all_coins" not in st.session_state:
     st.session_state.all_coins = []
 
+
 def get_top_coins(limit=100):
     if len(st.session_state.all_coins) == 0:
         cg = CoinGeckoAPI()
-        coins = cg.get_coins_markets(vs_currency='usd', order='market_cap_desc', per_page=limit, page=1)
+        coins = cg.get_coins_markets(
+            vs_currency='usd', order='market_cap_desc', per_page=limit, page=1)
         st.session_state.all_coins.extend(coins)
 
     return st.session_state.all_coins
+
 
 if "last_coin_id" not in st.session_state:
     st.session_state.last_coin_id = ""
@@ -20,12 +23,12 @@ if "last_coin_id" not in st.session_state:
     st.session_state.last_to_timestamp = 0
     st.session_state.last_dataframe = None
 
+
 def get_historical_prices(coin_id, vs_currency, from_timestamp, to_timestamp):
 
     if coin_id == "":
         return st.session_state.last_dataframe
 
-    
     if st.session_state.last_coin_id != coin_id or st.session_state.last_from_timestamp != from_timestamp or st.session_state.last_to_timestamp != to_timestamp:
         cg = CoinGeckoAPI()
         data = cg.get_coin_market_chart_range_by_id(
@@ -43,6 +46,7 @@ def get_historical_prices(coin_id, vs_currency, from_timestamp, to_timestamp):
         st.session_state.last_dataframe = df
 
     return st.session_state.last_dataframe
+
 
 def grid_bot(coin_prices_df, lower_limit, upper_limit, num_grids, investment_usd):
     # Initialize variables
@@ -78,7 +82,8 @@ def grid_bot(coin_prices_df, lower_limit, upper_limit, num_grids, investment_usd
         # Price decreased
         if p_prev > p_curr:
             # Price crossed downwards from p_prev to p_curr
-            crossed_grids = [level for level in grid_levels if p_curr <= level < p_prev and lower_limit <= level <= upper_limit]
+            crossed_grids = [level for level in grid_levels if p_curr <=
+                             level < p_prev and lower_limit <= level <= upper_limit]
             for grid_level in crossed_grids:
                 if cash_balance >= amount_per_order:
                     # Increment transaction number
@@ -113,7 +118,8 @@ def grid_bot(coin_prices_df, lower_limit, upper_limit, num_grids, investment_usd
         # Price increased
         elif p_prev < p_curr:
             # Price crossed upwards from p_prev to p_curr
-            crossed_grids = [level for level in grid_levels if p_prev < level <= p_curr and lower_limit <= level <= upper_limit]
+            crossed_grids = [level for level in grid_levels if p_prev <
+                             level <= p_curr and lower_limit <= level <= upper_limit]
             for grid_level in crossed_grids:
                 # Check if we have any positions to sell at the grid below
                 positions_to_remove = []
@@ -122,7 +128,8 @@ def grid_bot(coin_prices_df, lower_limit, upper_limit, num_grids, investment_usd
                         coin_amount = position['amount']
                         cash_balance += coin_amount * grid_level
                         coin_balance -= coin_amount
-                        gain = (grid_level - position['buy_price']) * coin_amount
+                        gain = (grid_level -
+                                position['buy_price']) * coin_amount
                         # Assign transaction_number from the position
                         txn_number = position['transaction_number']
                         sell_action = {
@@ -153,6 +160,7 @@ def grid_bot(coin_prices_df, lower_limit, upper_limit, num_grids, investment_usd
 
     return transactions_df, total_profit, grid_size, max_invested_amount
 
+
 def main():
     st.title("Crypto Grid Trading Bot Simulator")
 
@@ -160,15 +168,17 @@ def main():
     # Fetch top 100 coins
     coins = get_top_coins(100)
     print(f"get top coins end  {datetime.now()}")
-    
+
     coin_options = {coin['name']: coin['id'] for coin in coins}
-    coin_name = st.selectbox("Select a cryptocurrency:", list(coin_options.keys()))
+    coin_name = st.selectbox("Select a cryptocurrency:",
+                             list(coin_options.keys()))
     coin_id = coin_options[coin_name]
 
     # Date selection
     col1, col2 = st.columns(2)
     with col1:
-        start_date = st.date_input("Start Date", datetime.now() - timedelta(days=30))
+        start_date = st.date_input(
+            "Start Date", datetime.now() - timedelta(days=30))
     with col2:
         end_date = st.date_input("End Date", datetime.now())
 
@@ -177,13 +187,16 @@ def main():
         return
 
     # Fetch historical prices to determine min and max prices
-    from_timestamp = int(datetime.combine(start_date, datetime.min.time()).timestamp())
-    to_timestamp = int(datetime.combine(end_date, datetime.max.time()).timestamp())
+    from_timestamp = int(datetime.combine(
+        start_date, datetime.min.time()).timestamp())
+    to_timestamp = int(datetime.combine(
+        end_date, datetime.max.time()).timestamp())
 
     print(f"get hist data start {datetime.now()}")
 
     with st.spinner('Fetching historical data...'):
-        coin_prices_df = get_historical_prices(coin_id, 'usd', from_timestamp, to_timestamp)
+        coin_prices_df = get_historical_prices(
+            coin_id, 'usd', from_timestamp, to_timestamp)
     print(f"get hist data end  {datetime.now()}")
 
     if coin_prices_df.empty:
@@ -198,10 +211,13 @@ def main():
     st.write(f"Maximum Price: ${max_price:,.2f}")
 
     # Set grid parameters
-    num_grids = st.slider("Select number of grids:", min_value=5, max_value=200, value=33)
+    num_grids = st.slider("Select number of grids:",
+                          min_value=5, max_value=200, value=33)
 
-    lower_limit = st.number_input("Grid Bottom Level (Lower Limit):", value=float(f"{min_price:.2f}"))
-    upper_limit = st.number_input("Grid Top Level (Upper Limit):", value=float(f"{max_price:.2f}"))
+    lower_limit = st.number_input(
+        "Grid Bottom Level (Lower Limit):", value=float(f"{min_price:.2f}"))
+    upper_limit = st.number_input(
+        "Grid Top Level (Upper Limit):", value=float(f"{max_price:.2f}"))
 
     if lower_limit >= upper_limit:
         st.error("Lower limit must be less than upper limit.")
@@ -249,13 +265,17 @@ def main():
             st.subheader("Simulation Results")
 
             st.write(f"**Total Grid Bot Profit:** ${total_profit:,.2f}")
-            st.write(f"**Total Grid Bot Profit Percentage:** {gain_percentage:.2f}%")
-            st.write(f"**Maximum Amount Invested in Grid Bot:** ${max_invested_amount:,.2f}")
+            st.write(
+                f"**Total Grid Bot Profit Percentage:** {gain_percentage:.2f}%")
+            st.write(
+                f"**Maximum Amount Invested in Grid Bot:** ${max_invested_amount:,.2f}")
             st.write(f"**Total HODL Profit:** ${hodl_profit:,.2f}")
 
             print(f"display results start {datetime.now()}")
             st.write("### Transactions:")
             st.dataframe(transactions_df)
             print(f"display results end  {datetime.now()}")
+
+
 if __name__ == "__main__":
     main()
